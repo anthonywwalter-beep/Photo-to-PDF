@@ -1,0 +1,15 @@
+{
+  "name": "photo-to-table",
+  "version": "0.1.0",
+  "description": "Photo or PDF in, clean editable table out. Nothing stored.",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test"
+  },
+  "engines": { "node": ">=20" },
+  "license": "MIT",
+  "dependencies": { "express": "^4.21.2" }
+}
