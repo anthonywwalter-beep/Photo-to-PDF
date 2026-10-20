@@ -19,16 +19,18 @@ Layout is picked automatically, with a "treat this as" toggle to correct it.
 ## Design principles
 
 1. **Review first.** The original is shown beside the result, and cells the AI was unsure about are flagged. Handwriting is where mistakes happen.
-2. **Nothing stored.** Files are processed in memory and discarded. No database, no accounts, no uploads written to disk, and request contents are not logged. The text of each page is sent to the Anthropic API to be read, so deploy accordingly if your documents are sensitive.
+2. **Nothing stored.** Files are processed in memory and discarded. No database, no accounts, no uploads written to disk, and request contents are not logged. Each page image is sent to the Anthropic API to be read, so deploy accordingly if your documents are sensitive.
 3. **Photo in, clean table out.** No complex layouts, charts, or accounts in v1.
 
 ## Run it
 
-```bash
-npm install
-cp .env.example .env   # add your key (needed from step 2)
-npm start              # http://localhost:3000
-npm test
-```
+Requires Python 3.10+.
 
-Requires Node 20+.
+```bash
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r requirements-dev.txt
+cp .env.example .env               # add your key (needed from step 2)
+uvicorn app.main:app --reload      # http://localhost:8000
+pytest
+```
