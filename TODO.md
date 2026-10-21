@@ -3,7 +3,7 @@
 Work one step at a time. Each step ends with something runnable and a git commit.
 
 - [x] **1. Scaffold.** Repo, FastAPI server that serves a static page, `/health` endpoint, test, README with privacy stance.
-- [ ] **2. Extraction API.** `POST /api/extract` takes one image in memory, calls the Anthropic API, returns `{layout, columns, rows[{v, low}]}`. No disk writes, no content logging.
+- [x] **2. Extraction API.** `POST /api/extract` takes one image in memory, calls the Anthropic API, returns `{layout, columns, rows}` where each cell is `{v, low}`. Demo mode works with no key. No disk writes, no content logging.
 - [ ] **3. Upload page.** Pick one image, show it beside the raw extracted result. Loading and error states.
 - [ ] **4. Editable table + CSV.** Edit cells, rename columns, delete/add rows, download CSV.
 - [ ] **5. Uncertain-cell flags.** Highlight low-confidence cells; editing clears the flag.

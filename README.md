@@ -4,7 +4,7 @@ Upload a photo or PDF of a table, form, or notes. Get an editable table next to 
 
 ## Status
 
-Early development. See [TODO.md](TODO.md) for the step-by-step plan.
+Early development. Steps 1-2 are done: the server and the extraction API. There is no upload page yet (step 3), so for now you use the API directly. See [TODO.md](TODO.md) for the plan and [CHANGELOG.md](CHANGELOG.md) for what changed and why.
 
 ## How it will work
 
@@ -30,7 +30,74 @@ Requires Python 3.10+.
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements-dev.txt
-cp .env.example .env               # add your key (needed from step 2)
-uvicorn app.main:app --reload      # http://localhost:8000
-pytest
+pytest                             # no key or network needed
 ```
+
+**Try it with no API key** (returns built-in sample data). Use any PNG or JPG; demo mode ignores its contents.
+
+macOS / Linux:
+
+```bash
+DEMO_MODE=1 uvicorn app.main:app --reload
+curl -X POST --data-binary @any-image.png "http://localhost:8000/api/extract?layout=form"
+```
+
+Windows PowerShell (`curl` there is a different command, so use these instead):
+
+```powershell
+.venv\Scripts\Activate.ps1        # if blocked: Set-ExecutionPolicy -Scope Process RemoteSigned
+$env:DEMO_MODE = "1"
+uvicorn app.main:app --reload
+```
+
+Then in a second PowerShell window:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri "http://localhost:8000/api/extract?layout=form" `
+  -InFile .\any-image.png -ContentType "application/octet-stream" | ConvertTo-Json -Depth 5
+```
+
+`curl.exe -X POST --data-binary "@any-image.png" "http://localhost:8000/api/extract?layout=form"` also works on Windows 10 and later (note the `.exe`).
+
+**Run it for real:** copy `.env.example` to `.env`, add `ANTHROPIC_API_KEY`, then:
+
+```bash
+uvicorn app.main:app --reload --env-file .env
+curl -X POST --data-binary @photo.jpg http://localhost:8000/api/extract
+```
+
+## API
+
+`POST /api/extract?layout=auto|table|form|list`
+
+The request body is the raw image (JPG, PNG, WebP, or GIF, up to 5 MB). The image type is detected from the bytes.
+
+```json
+{"layout": "table",
+ "columns": ["Name", "Time in"],
+ "rows": [[{"v": "Maria Lopez", "low": false}, {"v": "9:0?", "low": true}]]}
+```
+
+`low: true` means the reader was unsure about that cell. Errors: `400` empty, `413` too large, `415` not an image, `422` bad layout, `502` reader failed, `503` no key configured.
+
+`GET /health` returns `{"ok": true, "mode": "demo" | "live" | "no-key"}`.
+
+## Settings
+
+| Variable | Meaning |
+|---|---|
+| `ANTHROPIC_API_KEY` | Enables real reading |
+| `DEMO_MODE=1` | Sample data, no key needed |
+| `EXTRACT_MODEL` | Model name (default `claude-sonnet-5-5`) |
+| `MAX_UPLOAD_MB` | Upload limit (default 5) |
+
+## Project layout
+
+| Path | Purpose |
+|---|---|
+| `app/main.py` | Web app and endpoints |
+| `app/extraction.py` | Prompt, reader (real and demo), reply parsing |
+| `app/schemas.py` | Response shape |
+| `app/config.py` | Settings from environment |
+| `static/` | The web page |
+| `tests/` | Automated tests; none need a key or network |
