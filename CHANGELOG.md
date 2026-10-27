@@ -2,6 +2,38 @@
 
 Each entry lists every file touched and what the file is for. Newest first.
 
+## 0.3.0 - Step 3: Upload page
+
+You can now use the app in a browser: pick an image, see it beside the extracted table. Works in demo mode with no key.
+
+### Added
+| File | Purpose |
+|---|---|
+| `static/app.js` | The page's logic: validates the file, shows a local preview, sends the image to `/api/extract`, shows loading and error states, renders the result as a table, resets for another image, and reads `/health` to show a demo-mode or no-key banner. |
+| `static/style.css` | Page styling: two-column layout (stacks on phones), loading spinner, error box, light and dark mode. |
+| `tests/test_static.py` | Checks the page and assets are served, the privacy statement is present, every element id the script uses exists in the HTML, and the script never uses `innerHTML` (so text from a document can never inject markup). |
+
+### Changed
+| File | Change |
+|---|---|
+| `static/index.html` | Replaced the placeholder with the real page: privacy notice, drop zone, side-by-side Original / Extracted panes, raw JSON toggle. |
+| `README.md` | Status line and instructions for using the web page. |
+| `TODO.md` | Step 3 checked off. |
+| `CHANGELOG.md` | This entry. |
+
+### Design decisions
+- **The page says which mode it is in.** Demo mode shows a banner so sample data is never mistaken for a real reading; with no key it explains how to fix that.
+- **Cell text is inserted as plain text only.** A document could contain `<script>` or similar; it is displayed, never executed.
+- **The preview never leaves the browser.** It comes from a local object URL; the image goes only to `/api/extract`.
+- **Checks happen twice.** The page rejects non-images and files over 5 MB immediately; the server still enforces the same rules and its messages are shown as-is.
+- **No framework or build step**, as planned in `docs/TECH_STACK.md`.
+
+### Known limits (by design, for later steps)
+The table is read-only (step 4), uncertain cells are not highlighted yet (step 5), there is no layout toggle (step 6), and only one image at a time (step 7). Photos in HEIC format (some iPhone settings) are rejected by the server with a clear message; use JPG or PNG.
+
+### How it was verified
+29 automated tests pass. The page script was also run in a simulated browser (jsdom) against the real demo server: 20 checks covering the full flow, loading state, rejected files, server and network errors, drag and drop, and hostile cell text. A simulated browser does not check how the page looks, so the visual layout still needs a look in a real browser.
+
 ## 0.2.2 - Tech stack document
 
 | File | Purpose |
