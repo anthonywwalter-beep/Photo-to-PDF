@@ -9,9 +9,9 @@ Work one step at a time. Each step ends with something runnable and a git commit
 - [ ] **5. Uncertain-cell flags.** Highlight low-confidence cells; editing clears the flag.
 - [ ] **6. Layout toggle.** Auto-detect table/form/list, with a "treat this as" override that re-runs extraction.
 - [ ] **7. Multiple files.** Several images at once, merged into one table; click a row to see its source image.
-- [ ] **8. PDF support.** Convert PDF pages to images (in memory), then treat them as step 7 does.
+- [ ] **8. PDF support.** Convert PDF pages to images in memory with `pypdfium2`, then treat them as step 7 does.
 - [ ] **9. Printable view.** Clean print stylesheet.
-- [ ] **10. Hardening.** File size/type limits, rate limiting, error messages, privacy checks (no logs of content), tests.
-- [ ] **11. Deploy docs.** Dockerfile, env vars, how to host it.
+- [ ] **10. Hardening.** File size/type limits, Pillow downscaling of large photos, rate limiting, error messages, privacy checks (no logs of content), tests.
+- [ ] **11. Deploy docs.** Dockerfile (slim base, non-root, `--host 0.0.0.0`, `.dockerignore`, healthcheck), optional compose file, run with `--read-only` to enforce nothing-stored, HTTPS notes. See `docs/TECH_STACK.md`.
 
 Out of scope for v1: multi-column newsletters, charts/graphs, accounts, databases.

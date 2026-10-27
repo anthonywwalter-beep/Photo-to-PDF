@@ -2,6 +2,18 @@
 
 Each entry lists every file touched and what the file is for. Newest first.
 
+## 0.2.2 - Tech stack document
+
+| File | Purpose |
+|---|---|
+| `docs/TECH_STACK.md` | Records what the project uses now, what is planned per TODO step, what is deliberately left out and why, and the plan for Docker (recommended at step 11, not for development). |
+
+| File | Change |
+|---|---|
+| `README.md` | Project layout table now lists `docs/` and `CHANGELOG.md`. |
+| `TODO.md` | Step 8 names `pypdfium2`; step 10 names Pillow resizing; step 11 expanded with the Docker plan. |
+| `CHANGELOG.md` | This entry. |
+
 ## 0.2.1 - Docs fix
 
 | File | Change |

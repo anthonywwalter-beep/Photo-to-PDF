@@ -100,4 +100,6 @@ The request body is the raw image (JPG, PNG, WebP, or GIF, up to 5 MB). The imag
 | `app/schemas.py` | Response shape |
 | `app/config.py` | Settings from environment |
 | `static/` | The web page |
+| `docs/TECH_STACK.md` | Tech stack, what is deliberately left out, Docker plan |
+| `CHANGELOG.md` | Every change, with each file's purpose |
 | `tests/` | Automated tests; none need a key or network |
