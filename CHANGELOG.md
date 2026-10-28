@@ -2,6 +2,36 @@
 
 Each entry lists every file touched and what the file is for. Newest first.
 
+## 0.5.0 - Step 5: Uncertain-cell flags
+
+Cells the reader was unsure about are highlighted so a person can check them quickly against the original.
+
+### Added
+| File | Purpose |
+|---|---|
+| `tests/test_demo.py` | Makes sure demo mode includes uncertain cells in every layout, so the whole review flow can be tried without an API key. |
+
+### Changed
+| File | Change |
+|---|---|
+| `static/app.js` | Flagged cells are highlighted. A live counter shows how many are left ("3 cells to check"), a **Next cell to check** button jumps between them in reading order and wraps around, and a **✓** button marks a cell as correct without changing it. Editing a flagged cell also clears its flag. Downloading with unchecked flags works but says how many were not checked. |
+| `static/index.html` | Added the Next button, the counter, and a legend explaining amber cells and the ✓. |
+| `static/style.css` | Amber highlight (light and dark mode), the ✓ button, the legend swatch. |
+| `README.md`, `TODO.md`, `CHANGELOG.md` | Status, step 5 checked off, this entry. |
+
+### Design decisions
+- **A flag clears only when the user acts.** Editing the cell or pressing ✓ clears it; clicking into it or tabbing past does not. The tool never assumes a cell was reviewed just because it was looked at.
+- **Not colour alone.** Flagged cells also have a thick left edge, a hover tooltip, a ✓ button, a screen-reader label ("uncertain, please check"), and the counter, so the cue survives colour blindness and printing in black and white.
+- **Flags never enter the CSV.** The file contains only the data. Unchecked flags produce a note when downloading, not a block, because the person may have a good reason to download early.
+- **Flags travel with their row.** Deleting a flagged row lowers the count; Undo brings the row and its flags back. Added rows start unflagged.
+- **The ✓ counts as an edit** for the unsaved-work warning, since it is review work that would be lost.
+
+### How it was verified
+35 automated tests pass (also with Python's default text encoding forced to ASCII, the check that caught the Windows bug). The page was run in a simulated browser (jsdom) against the real demo server: 30 checks covering highlighting, clearing by edit and by ✓, focus-only not clearing, the Next button including wrap-around, flags through delete, undo, and add row, no flag data in the CSV, and the step 4 features after the cell code changed. To confirm those checks can actually fail, two deliberate bugs were introduced (edits not clearing flags; Next never advancing) and both were caught, then the code was restored. A simulated browser cannot judge how the colours look, so please check the amber highlight in a real browser in light and dark mode.
+
+### Known limits
+Whether a cell is flagged is the reader's own judgement. It will sometimes flag a correct cell and may miss a wrong one, so the original image still needs a look. Columns cannot yet be added or deleted. One image at a time (step 7).
+
 ## 0.4.1 - Fix: tests failed on Windows
 
 Three tests in `tests/test_static.py` failed on Windows with `UnicodeDecodeError: 'charmap' codec can't decode byte 0x9d`.

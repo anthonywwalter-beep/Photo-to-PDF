@@ -1,4 +1,4 @@
-// Upload, review, and edit page (steps 3-4). Plain JavaScript, no build step.
+// Upload, review, and edit page (steps 3-5). Plain JavaScript, no build step.
 // Privacy: the image is previewed from a local object URL and sent only to /api/extract.
 // Edits and the CSV are built in this browser tab and never sent anywhere; closing the tab discards them.
 // Text that comes back from a document is only ever inserted as plain text or as input values, never as markup.
@@ -10,6 +10,7 @@
     picker: $("picker"), work: $("work"), preview: $("preview"), summary: $("summary"),
     result: $("result"), rawWrap: $("raw-wrap"), raw: $("raw"), another: $("another"),
     tools: $("tools"), addRow: $("add-row"), download: $("download"),
+    nextFlag: $("next-flag"), flagCount: $("flag-count"),
     undo: $("undo"), undoText: $("undo-text"), undoBtn: $("undo-btn"),
   };
   let objectUrl = null;
@@ -18,6 +19,7 @@
   let layout = "";
   let dirty = false;    // edits not yet downloaded
   let undoInfo = null;  // the last deleted row, so it can be restored
+  let flagCursor = null; // the flagged cell the user was last taken to
 
   // ---------- CSV ----------
   // Spreadsheets run cells that start with = + - @ (or tab/CR) as formulas. Document text is untrusted,
@@ -47,7 +49,9 @@
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     dirty = false;
-    setStatus("Downloaded extracted-table.csv.");
+    const left = countFlags();
+    setStatus("Downloaded extracted-table.csv." +
+      (left ? ` Note: ${left} flagged cell${left === 1 ? " was" : "s were"} not checked.` : ""));
   }
 
   // ---------- state and status ----------
@@ -78,6 +82,27 @@
     setStatus("");
   }
 
+  // ---------- uncertain-cell flags ----------
+  // A cell is flagged when the reader was unsure (messy handwriting, blur, a guess). It is cleared only when
+  // the user edits it or presses the check mark, never just because they looked at it.
+  function countFlags() {
+    return state ? state.rows.reduce((n, row) => n + row.filter((c) => c.low).length, 0) : 0;
+  }
+  function updateFlags() {
+    const n = countFlags();
+    el.flagCount.textContent = n ? `${n} cell${n === 1 ? "" : "s"} to check` : "No cells flagged";
+    el.nextFlag.disabled = n === 0;
+  }
+  function goToNextFlag() {
+    const flagged = [...el.result.querySelectorAll("td.flag textarea")];
+    if (!flagged.length) return;
+    const after = flagged.find((t) => flagCursor && flagCursor.isConnected &&
+      (flagCursor.compareDocumentPosition(t) & Node.DOCUMENT_POSITION_FOLLOWING));
+    flagCursor = after || flagged[0]; // wraps back to the first
+    flagCursor.focus();
+    if (flagCursor.scrollIntoView) flagCursor.scrollIntoView({ block: "center" });
+  }
+
   // ---------- editable table ----------
   function autosize(ta) {
     ta.style.height = "auto";
@@ -87,11 +112,26 @@
   function buildRow(row, r) {
     const tr = document.createElement("tr");
     row.forEach((cell, c) => {
+      const td = tr.insertCell();
       const ta = document.createElement("textarea");
       ta.rows = 1;
       ta.value = cell.v;
-      ta.setAttribute("aria-label", `Row ${r + 1}, column ${c + 1}`);
-      ta.addEventListener("input", () => { cell.v = ta.value; cell.low = false; autosize(ta); dirty = true; });
+      const mark = document.createElement("button");
+      mark.type = "button";
+      mark.className = "mark";
+      mark.textContent = "✓";
+      mark.title = "Looks right: clear this flag";
+      mark.setAttribute("aria-label", `Mark row ${r + 1}, column ${c + 1} as correct`);
+      const sync = () => {
+        td.classList.toggle("flag", cell.low);
+        td.title = cell.low ? "The reader was unsure about this cell. Please check it." : "";
+        mark.hidden = !cell.low;
+        ta.setAttribute("aria-label", `Row ${r + 1}, column ${c + 1}${cell.low ? ", uncertain, please check" : ""}`);
+      };
+      const clearFlag = () => { if (cell.low) { cell.low = false; sync(); updateFlags(); } };
+      sync();
+      ta.addEventListener("input", () => { cell.v = ta.value; autosize(ta); dirty = true; clearFlag(); });
+      mark.addEventListener("click", () => { dirty = true; clearFlag(); ta.focus(); });
       ta.addEventListener("keydown", (e) => {
         // Enter moves down a row, like a spreadsheet. Shift+Enter makes a new line inside the cell.
         if (e.key !== "Enter" || e.shiftKey) return;
@@ -99,7 +139,7 @@
         const next = tr.nextElementSibling;
         if (next) next.cells[c].querySelector("textarea").focus();
       });
-      tr.insertCell().appendChild(ta);
+      td.append(ta, mark);
     });
     const act = tr.insertCell();
     act.className = "act";
@@ -138,7 +178,9 @@
       hint.textContent = "No rows. Use “Add row” to start one.";
       el.result.appendChild(hint);
     }
+    flagCursor = null;
     updateSummary();
+    updateFlags();
     if (window.requestAnimationFrame) {
       requestAnimationFrame(() => el.result.querySelectorAll("textarea").forEach(autosize));
     }
@@ -236,6 +278,7 @@
   });
   el.another.addEventListener("click", () => { if (confirmDiscard()) reset(); });
   el.addRow.addEventListener("click", addRow);
+  el.nextFlag.addEventListener("click", goToNextFlag);
   el.download.addEventListener("click", downloadCsv);
   el.undoBtn.addEventListener("click", undoDelete);
   // Nothing is saved anywhere, so warn before a reload or close would throw edits away.

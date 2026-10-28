@@ -4,7 +4,7 @@ Upload a photo or PDF of a table, form, or notes. Get an editable table next to 
 
 ## Status
 
-Early development. Steps 1-4 are done: the server, the extraction API, the upload page, and an editable table with CSV download. Highlighting uncertain cells, the layout toggle, and multiple files come next. See [TODO.md](TODO.md) for the plan and [CHANGELOG.md](CHANGELOG.md) for what changed and why.
+Early development. Steps 1-5 are done: the server, the extraction API, the upload page, an editable table with CSV download, and highlighting of uncertain cells. The layout toggle and multiple files come next. See [TODO.md](TODO.md) for the plan and [CHANGELOG.md](CHANGELOG.md) for what changed and why.
 
 ## How it will work
 
@@ -33,7 +33,7 @@ pip install -r requirements-dev.txt
 pytest                             # no key or network needed
 ```
 
-**Use the web page.** Start the server (see below), then open http://localhost:8000 in a browser, choose an image, and the original appears next to the extracted table. Click any cell or column name to fix it, delete or add rows, then press **Download CSV**. Edits live only in the open tab (nothing is saved), and the page warns you before they would be lost. With `DEMO_MODE=1` the table is sample data; with a key it is read from your image.
+**Use the web page.** Start the server (see below), then open http://localhost:8000 in a browser, choose an image, and the original appears next to the extracted table. Amber cells are ones the reader was unsure about: check them against the original, then edit them or press ✓. **Next cell to check** jumps between them. Click any cell or column name to fix it, delete or add rows, then press **Download CSV**. Edits live only in the open tab (nothing is saved), and the page warns you before they would be lost. With `DEMO_MODE=1` the table is sample data; with a key it is read from your image.
 
 **Try it with no API key** (returns built-in sample data). Use any PNG or JPG; demo mode ignores its contents.
 

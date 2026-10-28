@@ -1,11 +1,11 @@
 :root {
   --bg: #faf9f6; --card: #fff; --ink: #1f2328; --muted: #6b7280; --line: #e3e0d8;
-  --accent: #2f6f5e; --accent-ink: #fff; --error-bg: #fdecea; --error-ink: #8a1f17; --note-bg: #eef4ff;
+  --accent: #2f6f5e; --accent-ink: #fff; --flag-bg: #fff1c2; --flag-line: #d19a00; --error-bg: #fdecea; --error-ink: #8a1f17; --note-bg: #eef4ff;
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #17191c; --card: #202327; --ink: #e8e6e1; --muted: #9aa0a6; --line: #32363b;
-    --accent: #5cb89f; --accent-ink: #10231d; --error-bg: #3a1c19; --error-ink: #ffb4ab; --note-bg: #1c2638;
+    --accent: #5cb89f; --accent-ink: #10231d; --flag-bg: #4a3d0c; --flag-line: #c99a00; --error-bg: #3a1c19; --error-ink: #ffb4ab; --note-bg: #1c2638;
   }
 }
 [hidden] { display: none !important; }
@@ -51,3 +51,14 @@ th input { font-weight: 600; }
 td textarea:focus, th input:focus { outline: 2px solid var(--accent); outline-offset: -2px; background: var(--card); }
 td.act button { margin: 0; padding: 2px 8px; border: 0; background: transparent; color: var(--muted); }
 td.act button:hover { color: var(--error-ink); }
+
+td { position: relative; }
+td.flag { background: var(--flag-bg); box-shadow: inset 4px 0 0 var(--flag-line); }
+td.flag textarea { padding-right: 30px; }
+td.flag textarea:focus { background: var(--card); }
+.mark { position: absolute; top: 3px; right: 3px; margin: 0; padding: 0 6px; font-size: .8rem; line-height: 1.5;
+  border: 1px solid var(--flag-line); border-radius: 6px; background: var(--card); color: var(--ink); cursor: pointer; }
+.toolbar .spacer { flex: 1; }
+.flag-count { align-self: center; color: var(--muted); font-size: .9rem; }
+.swatch { display: inline-block; width: 12px; height: 12px; margin-right: 4px; vertical-align: -2px;
+  background: var(--flag-bg); border: 1px solid var(--flag-line); border-left-width: 4px; }

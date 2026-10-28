@@ -37,11 +37,16 @@
       <p id="summary" class="hint"></p>
       <div id="tools" hidden>
         <div class="toolbar">
+          <button id="next-flag" type="button">Next cell to check</button>
+          <span id="flag-count" class="flag-count"></span>
+          <span class="spacer"></span>
           <button id="add-row" type="button">+ Add row</button>
           <button id="download" type="button" class="primary">Download CSV</button>
         </div>
-        <p class="hint">Click any cell or column name to edit it. Cells that begin with = + - or @ get a leading
-          ' in the CSV so spreadsheets do not run them as formulas.</p>
+        <p class="hint"><span class="swatch"></span> Amber cells were hard to read, so check them against the
+          original. Edit a flagged cell, or press ✓ if it is already right, to clear its flag. Click any cell or
+          column name to edit it. In the CSV, cells that begin with = + - or @ get a leading ' so spreadsheets do
+          not run them as formulas.</p>
         <p id="undo" class="undo" hidden><span id="undo-text"></span> <button id="undo-btn" type="button">Undo</button></p>
       </div>
       <div id="result" class="scroll"></div>
