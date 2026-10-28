@@ -35,9 +35,18 @@
     <section class="pane">
       <h2>Extracted</h2>
       <p id="summary" class="hint"></p>
+      <div id="tools" hidden>
+        <div class="toolbar">
+          <button id="add-row" type="button">+ Add row</button>
+          <button id="download" type="button" class="primary">Download CSV</button>
+        </div>
+        <p class="hint">Click any cell or column name to edit it. Cells that begin with = + - or @ get a leading
+          ' in the CSV so spreadsheets do not run them as formulas.</p>
+        <p id="undo" class="undo" hidden><span id="undo-text"></span> <button id="undo-btn" type="button">Undo</button></p>
+      </div>
       <div id="result" class="scroll"></div>
       <details id="raw-wrap" hidden>
-        <summary>Show raw JSON</summary>
+        <summary>Show raw JSON (as read, before your edits)</summary>
         <pre id="raw"></pre>
       </details>
     </section>

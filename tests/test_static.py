@@ -24,8 +24,8 @@ def test_page_states_the_privacy_promise():
 
 
 def test_page_has_every_element_the_script_uses():
-    html = (STATIC / "index.html").read_text()
-    js = (STATIC / "app.js").read_text()
+    html = (STATIC / "index.html").read_text(encoding="utf-8")
+    js = (STATIC / "app.js").read_text(encoding="utf-8")
     used = set(re.findall(r'\$\("([\w-]+)"\)', js))
     missing = [i for i in used if f'id="{i}"' not in html]
     assert not missing, f"app.js looks up ids that index.html lacks: {missing}"
@@ -33,5 +33,12 @@ def test_page_has_every_element_the_script_uses():
 
 def test_script_never_uses_innerhtml():
     """Text from documents must go in with textContent; innerHTML would allow script injection."""
-    js = (STATIC / "app.js").read_text()
+    js = (STATIC / "app.js").read_text(encoding="utf-8")
     assert "innerHTML" not in js and "insertAdjacentHTML" not in js and "document.write" not in js
+
+
+def test_script_never_stores_anything_in_the_browser():
+    """Nothing-stored promise: no localStorage, sessionStorage, IndexedDB, or cookies."""
+    js = (STATIC / "app.js").read_text(encoding="utf-8")
+    for banned in ("localStorage", "sessionStorage", "indexedDB", "document.cookie"):
+        assert banned not in js, banned

@@ -2,6 +2,49 @@
 
 Each entry lists every file touched and what the file is for. Newest first.
 
+## 0.4.1 - Fix: tests failed on Windows
+
+Three tests in `tests/test_static.py` failed on Windows with `UnicodeDecodeError: 'charmap' codec can't decode byte 0x9d`.
+
+**Cause:** the tests read `static/app.js` and `static/index.html` with `Path.read_text()` and no encoding. Python then uses the operating system's default, which is UTF-8 on Linux and macOS but cp1252 on Windows. Step 4 added characters such as the multiplication sign and curly quotes to the web files, which cp1252 cannot decode. It was missed because all earlier testing ran on Linux. The app itself was not affected: the server already sends `charset=utf-8` for the page, script, and stylesheet.
+
+| File | Change |
+|---|---|
+| `tests/test_static.py` | All four `read_text()` calls now pass `encoding="utf-8"`. |
+| `tests/test_hygiene.py` | New. Fails if any Python file under `app/` or `tests/` calls `read_text` or `write_text` without an explicit encoding, so this cannot come back unnoticed. |
+| `CHANGELOG.md` | This entry. |
+
+**Verified by** reproducing the exact three failures with the default encoding forced to ASCII, confirming all tests pass under that setting after the fix, and confirming the new guard test fails when the bug is reintroduced. 31 tests pass. Not run on an actual Windows machine.
+
+## 0.4.0 - Step 4: Editable table and CSV download
+
+The extracted table can now be corrected in the page and downloaded as a CSV. Everything happens in the browser tab; edits and the CSV are never sent to the server.
+
+### Changed
+| File | Change |
+|---|---|
+| `static/app.js` | Rewritten around an editable table held in memory. Cells and column names are editable; rows can be deleted (with Undo) and added; Enter moves down a row; the CSV is built and downloaded in the browser; leaving the page or loading another image with unsaved edits asks first. |
+| `static/index.html` | Added the toolbar (+ Add row, Download CSV), a hint line, and the Undo bar. The raw JSON toggle is now labelled "as read, before your edits". |
+| `static/style.css` | Styles for editable cells (look like plain cells, highlight on focus), the toolbar, the primary button, and the Undo bar. |
+| `tests/test_static.py` | Added a guard test: the script may never use localStorage, sessionStorage, IndexedDB, or cookies, so the "nothing stored" promise holds in the browser too. |
+| `README.md` | Status line and a note on editing and CSV. |
+| `TODO.md` | Step 4 checked off. |
+| `CHANGELOG.md` | This entry. |
+
+### Design decisions
+- **Spreadsheet formula protection.** Document text is untrusted: a form could contain `=HYPERLINK(...)`, which Excel and Sheets run when the CSV is opened. Cells (and headers) starting with `=`, `@`, tab, or carriage return, or with `+`/`-` followed by anything other than digits and number punctuation, get a leading `'`. Plain numbers and phone numbers such as `-5.00` or `+1 (555) 014-2` are left untouched. The page tells the user this.
+- **CSV format.** Comma separated, CRLF line endings, fields containing commas, quotes, or line breaks are quoted, and a UTF-8 byte-order mark is added so Excel shows accents and non-English text correctly.
+- **Edits are not saved anywhere, so the page protects them**: a browser warning before closing or reloading with unsaved edits, a confirmation before replacing the table with another image, and a one-step Undo for a deleted row.
+- **Input fields, not rich text.** Cells are plain text areas, so pasted content can never carry formatting or markup.
+- **Confidence flags are kept in memory** (`low` on each cell, cleared when a cell is edited) ready for step 5, which will highlight them. Nothing displays them yet.
+- **No server change.** The CSV is built in the browser, as planned in `docs/TECH_STACK.md`.
+
+### How it was verified
+30 automated tests pass. The page was also run in a simulated browser (jsdom) against the real demo server: 28 checks covering editing, renaming, delete and undo, add row, Enter-key movement, unsaved-edit warnings, and the actual downloaded bytes (byte-order mark, CRLF, quoting, accents, and 8 kinds of formula-looking cells). Those browser checks are not part of the repository, because the project does not use Node. The Python tests only cover the static files. A simulated browser also cannot judge appearance or a real file download, so please try both in a real browser.
+
+### Known limits
+Columns cannot be deleted or added yet. The table is still one image at a time (step 7).
+
 ## 0.3.0 - Step 3: Upload page
 
 You can now use the app in a browser: pick an image, see it beside the extracted table. Works in demo mode with no key.

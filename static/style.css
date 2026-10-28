@@ -37,3 +37,17 @@ th { background: var(--bg); font-weight: 600; }
 pre { overflow: auto; max-height: 300px; font-size: .8rem; }
 button { font: inherit; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; margin-top: 14px; }
 button:hover { border-color: var(--accent); }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.toolbar button, .undo button { margin-top: 0; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.undo { background: var(--note-bg); border-radius: 8px; padding: 6px 10px; margin: 8px 0; font-size: .9rem; }
+td { padding: 0; }
+th { padding: 0; }
+td.act { width: 2rem; text-align: center; }
+td textarea, th input { display: block; width: 100%; min-width: 7rem; margin: 0; padding: 6px 8px; border: 0; border-radius: 0;
+  background: transparent; color: inherit; font: inherit; resize: none; overflow: hidden; }
+th input { font-weight: 600; }
+td textarea:focus, th input:focus { outline: 2px solid var(--accent); outline-offset: -2px; background: var(--card); }
+td.act button { margin: 0; padding: 2px 8px; border: 0; background: transparent; color: var(--muted); }
+td.act button:hover { color: var(--error-ink); }

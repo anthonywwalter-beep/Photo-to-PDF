@@ -1,6 +1,7 @@
-// Upload page (step 3). Plain JavaScript, no build step.
+// Upload, review, and edit page (steps 3-4). Plain JavaScript, no build step.
 // Privacy: the image is previewed from a local object URL and sent only to /api/extract.
-// Text that comes back from a document is only ever inserted as plain text (textContent), never as markup.
+// Edits and the CSV are built in this browser tab and never sent anywhere; closing the tab discards them.
+// Text that comes back from a document is only ever inserted as plain text or as input values, never as markup.
 (() => {
   const MAX_MB = 5; // matches the server default; the server's answer is the final word
   const $ = (id) => document.getElementById(id);
@@ -8,50 +9,169 @@
     drop: $("drop"), file: $("file"), status: $("status"), banner: $("mode-banner"),
     picker: $("picker"), work: $("work"), preview: $("preview"), summary: $("summary"),
     result: $("result"), rawWrap: $("raw-wrap"), raw: $("raw"), another: $("another"),
+    tools: $("tools"), addRow: $("add-row"), download: $("download"),
+    undo: $("undo"), undoText: $("undo-text"), undoBtn: $("undo-btn"),
   };
   let objectUrl = null;
   let controller = null;
+  let state = null;     // { columns: [string], rows: [[{ v, low }]] } - the table being edited
+  let layout = "";
+  let dirty = false;    // edits not yet downloaded
+  let undoInfo = null;  // the last deleted row, so it can be restored
 
+  // ---------- CSV ----------
+  // Spreadsheets run cells that start with = + - @ (or tab/CR) as formulas. Document text is untrusted,
+  // so such cells get a leading apostrophe. Plain numbers and phone numbers like -5.00 or +1 (555) 014-2 are left alone.
+  function neutralize(v) {
+    if (/^[=@\t\r]/.test(v)) return "'" + v;
+    if (/^[+-]/.test(v) && !/^[+-][\d.,\s()$€£%-]*$/.test(v)) return "'" + v;
+    return v;
+  }
+  function csvField(v) {
+    v = neutralize(v);
+    return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  }
+  function toCsv(columns, rows) {
+    const lines = [columns, ...rows.map((r) => r.map((c) => c.v))];
+    return lines.map((l) => l.map(csvField).join(",")).join("\r\n") + "\r\n";
+  }
+  function downloadCsv() {
+    // The BOM makes Excel read accents and non-English text correctly.
+    const blob = new Blob(["\ufeff" + toCsv(state.columns, state.rows)], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "extracted-table.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    dirty = false;
+    setStatus("Downloaded extracted-table.csv.");
+  }
+
+  // ---------- state and status ----------
   function setStatus(text, kind) {
     el.status.textContent = text;
     el.status.className = kind || "";
+  }
+  function clearUndo() { undoInfo = null; el.undo.hidden = true; }
+  function updateSummary() {
+    el.summary.textContent = `Layout: ${layout} · ${state.rows.length} row(s) · ${state.columns.length} column(s)`;
+  }
+  function confirmDiscard() {
+    return !dirty || window.confirm("You have edits that have not been downloaded. Discard them?");
   }
 
   function reset() {
     if (controller) controller.abort();
     if (objectUrl) URL.revokeObjectURL(objectUrl);
-    objectUrl = controller = null;
+    objectUrl = controller = state = null;
+    dirty = false;
+    clearUndo();
     el.preview.removeAttribute("src");
     el.result.replaceChildren();
     el.summary.textContent = "";
     el.raw.textContent = "";
-    el.rawWrap.hidden = el.work.hidden = el.another.hidden = true;
+    el.rawWrap.hidden = el.tools.hidden = el.work.hidden = el.another.hidden = true;
     el.picker.hidden = false;
     setStatus("");
   }
 
-  function renderTable(data) {
-    el.result.replaceChildren();
-    if (!data.rows.length) {
-      el.result.textContent = "No rows were found in this image.";
-      return;
-    }
-    const table = document.createElement("table");
-    const head = table.createTHead().insertRow();
-    for (const name of data.columns) {
-      const th = document.createElement("th");
-      th.scope = "col";
-      th.textContent = name;
-      head.appendChild(th);
-    }
-    const body = table.createTBody();
-    for (const row of data.rows) {
-      const tr = body.insertRow();
-      for (const cell of row) tr.insertCell().textContent = cell.v;
-    }
-    el.result.appendChild(table);
+  // ---------- editable table ----------
+  function autosize(ta) {
+    ta.style.height = "auto";
+    if (ta.scrollHeight) ta.style.height = ta.scrollHeight + "px";
   }
 
+  function buildRow(row, r) {
+    const tr = document.createElement("tr");
+    row.forEach((cell, c) => {
+      const ta = document.createElement("textarea");
+      ta.rows = 1;
+      ta.value = cell.v;
+      ta.setAttribute("aria-label", `Row ${r + 1}, column ${c + 1}`);
+      ta.addEventListener("input", () => { cell.v = ta.value; cell.low = false; autosize(ta); dirty = true; });
+      ta.addEventListener("keydown", (e) => {
+        // Enter moves down a row, like a spreadsheet. Shift+Enter makes a new line inside the cell.
+        if (e.key !== "Enter" || e.shiftKey) return;
+        e.preventDefault();
+        const next = tr.nextElementSibling;
+        if (next) next.cells[c].querySelector("textarea").focus();
+      });
+      tr.insertCell().appendChild(ta);
+    });
+    const act = tr.insertCell();
+    act.className = "act";
+    const del = document.createElement("button");
+    del.type = "button";
+    del.textContent = "×";
+    del.title = `Delete row ${r + 1}`;
+    del.setAttribute("aria-label", `Delete row ${r + 1}`);
+    del.addEventListener("click", () => deleteRow(row));
+    act.appendChild(del);
+    return tr;
+  }
+
+  function renderTable() {
+    el.result.replaceChildren();
+    const table = document.createElement("table");
+    const head = table.createTHead().insertRow();
+    state.columns.forEach((name, c) => {
+      const input = document.createElement("input");
+      input.type = "text";
+      input.value = name;
+      input.setAttribute("aria-label", `Column ${c + 1} name`);
+      input.addEventListener("input", () => { state.columns[c] = input.value; dirty = true; });
+      const th = document.createElement("th");
+      th.scope = "col";
+      th.appendChild(input);
+      head.appendChild(th);
+    });
+    head.appendChild(document.createElement("th"));
+    const body = table.createTBody();
+    state.rows.forEach((row, r) => body.appendChild(buildRow(row, r)));
+    el.result.appendChild(table);
+    if (!state.rows.length) {
+      const hint = document.createElement("p");
+      hint.className = "hint";
+      hint.textContent = "No rows. Use “Add row” to start one.";
+      el.result.appendChild(hint);
+    }
+    updateSummary();
+    if (window.requestAnimationFrame) {
+      requestAnimationFrame(() => el.result.querySelectorAll("textarea").forEach(autosize));
+    }
+  }
+
+  function addRow() {
+    clearUndo();
+    state.rows.push(state.columns.map(() => ({ v: "", low: false })));
+    dirty = true;
+    renderTable();
+    const rows = el.result.querySelectorAll("tbody tr");
+    rows[rows.length - 1].querySelector("textarea").focus();
+  }
+
+  function deleteRow(row) {
+    const index = state.rows.indexOf(row);
+    if (index < 0) return;
+    state.rows.splice(index, 1);
+    undoInfo = { row, index };
+    el.undoText.textContent = "Row deleted.";
+    el.undo.hidden = false;
+    dirty = true;
+    renderTable();
+  }
+
+  function undoDelete() {
+    if (!undoInfo) return;
+    state.rows.splice(Math.min(undoInfo.index, state.rows.length), 0, undoInfo.row);
+    clearUndo();
+    renderTable();
+  }
+
+  // ---------- reading an image ----------
   async function errorMessage(res) {
     try {
       const j = await res.json();
@@ -67,6 +187,7 @@
     if (file.size > MAX_MB * 1024 * 1024) {
       return setStatus(`That file is larger than ${MAX_MB} MB. Try a smaller photo.`, "error");
     }
+    if (!confirmDiscard()) return;
     reset();
     objectUrl = URL.createObjectURL(file);
     el.preview.src = objectUrl;
@@ -81,9 +202,10 @@
       });
       if (!res.ok) return setStatus(await errorMessage(res), "error");
       const data = await res.json();
-      renderTable(data);
-      el.summary.textContent =
-        `Layout: ${data.layout} · ${data.rows.length} row(s) · ${data.columns.length} column(s)`;
+      layout = data.layout;
+      state = { columns: data.columns.slice(), rows: data.rows.map((r) => r.map((c) => ({ v: c.v, low: !!c.low }))) };
+      renderTable();
+      el.tools.hidden = false;
       el.raw.textContent = JSON.stringify(data, null, 2);
       el.rawWrap.hidden = false;
       setStatus("");
@@ -99,6 +221,7 @@
     handleFile(files[0]);
   }
 
+  // ---------- wiring ----------
   el.drop.addEventListener("click", () => el.file.click());
   el.drop.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); el.file.click(); }
@@ -111,7 +234,12 @@
     el.drop.classList.remove("over");
     pick(e.dataTransfer && e.dataTransfer.files);
   });
-  el.another.addEventListener("click", reset);
+  el.another.addEventListener("click", () => { if (confirmDiscard()) reset(); });
+  el.addRow.addEventListener("click", addRow);
+  el.download.addEventListener("click", downloadCsv);
+  el.undoBtn.addEventListener("click", undoDelete);
+  // Nothing is saved anywhere, so warn before a reload or close would throw edits away.
+  window.addEventListener("beforeunload", (e) => { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
 
   // Tell the user which mode the server is in, so demo data is never mistaken for a real reading.
   fetch("/health").then((r) => r.json()).then((h) => {
