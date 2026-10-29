@@ -36,6 +36,15 @@
       <h2>Extracted</h2>
       <p id="summary" class="hint"></p>
       <div id="tools" hidden>
+        <div id="layout" class="layout" role="radiogroup" aria-labelledby="layout-label">
+          <span id="layout-label">Treat this as:</span>
+          <label class="pill"><input type="radio" name="layout" value="auto" checked><span>Auto</span></label>
+          <label class="pill"><input type="radio" name="layout" value="table"><span>Table</span></label>
+          <label class="pill"><input type="radio" name="layout" value="form"><span>Form</span></label>
+          <label class="pill"><input type="radio" name="layout" value="list"><span>List</span></label>
+        </div>
+        <p class="hint">Auto picks for you. If it guessed wrong, choose one and the image is read again, replacing
+          your edits. Table: rows and columns. Form: one row, fields as columns. List: key items, dates, names, amounts.</p>
         <div class="toolbar">
           <button id="next-flag" type="button">Next cell to check</button>
           <span id="flag-count" class="flag-count"></span>

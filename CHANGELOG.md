@@ -2,6 +2,33 @@
 
 Each entry lists every file touched and what the file is for. Newest first.
 
+## 0.6.0 - Step 6: Layout toggle
+
+A "Treat this as: Auto / Table / Form / List" control lets the user correct the tool when it guesses the layout wrong. No server change: `/api/extract` has accepted `?layout=` since step 2.
+
+### Changed
+| File | Change |
+|---|---|
+| `static/app.js` | Reading was split out so it can be repeated. The chosen image stays in the browser tab, and picking a layout sends it again with `?layout=`. The summary says "Detected layout" for Auto or "Layout (your choice)" otherwise. |
+| `static/index.html` | Added the four-option radio group and a one-line explanation of each layout. |
+| `static/style.css` | Pill-style radio buttons, a dimmed table while reading. |
+| `tests/test_static.py` | New test: the page's toggle must offer exactly the layouts the API accepts (checked against `LayoutChoice`), so the two cannot drift apart. |
+| `README.md`, `TODO.md`, `CHANGELOG.md` | Status, step 6 checked off, this entry. |
+
+### Design decisions
+- **A failed re-read changes nothing.** The current table and your edits stay on screen, the toggle snaps back to its previous value, and an error is shown. Only a successful read replaces the table.
+- **Edits are never silently lost.** If there are unsaved edits, the page asks before re-reading, and cancelling leaves everything as it was. With no edits it just re-reads.
+- **One read at a time.** The toggle is disabled and the table dimmed while a read is running, so rapid clicking cannot start several paid API calls. Re-selecting the current option does nothing.
+- **Late answers are ignored.** Each read has a number; if the user has since moved on (chose another image, started another read), an answer that arrives afterwards is discarded.
+- **The image is resent, not stored.** It is held in memory in the browser tab only and sent to the server again on each re-read. The server still keeps nothing. Each re-read is another call to the Anthropic API, which matters for cost in live mode.
+- **Not colour alone.** The selected option is also bold.
+
+### How it was verified
+36 automated tests pass (also with Python's default text encoding forced to ASCII). The page was run in a simulated browser (jsdom) against the real demo server: 34 checks covering the request sent for each choice, the image bytes being resent, new tables per layout, the busy state, the unsaved-edit question (cancel and confirm), server and network failures keeping the old table, a late answer after "choose another", and the step 4 and 5 features afterwards. Three deliberate bugs (choice never sent, toggle not reverting after an error, late answers not ignored) were each caught, then the code was restored.
+
+### Known limits
+In demo mode each layout returns fixed sample data regardless of the image, so the toggle can be tried but says nothing about real accuracy. With a real key, a forced layout is an instruction to the reader; it follows it well in most cases but nothing in the server yet enforces, for example, exactly one row for a form. Whether forced layouts read real documents better than Auto can only be judged with real documents. Still one image at a time (step 7).
+
 ## 0.5.0 - Step 5: Uncertain-cell flags
 
 Cells the reader was unsure about are highlighted so a person can check them quickly against the original.

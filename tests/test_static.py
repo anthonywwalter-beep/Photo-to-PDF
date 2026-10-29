@@ -1,11 +1,13 @@
 """The web page is served, wired up, and keeps its safety rules."""
 import re
 from pathlib import Path
+from typing import get_args
 
 from fastapi.testclient import TestClient
 
 from app.config import Settings
 from app.main import create_app
+from app.schemas import LayoutChoice
 
 STATIC = Path(__file__).resolve().parent.parent / "static"
 client = TestClient(create_app(Settings()))
@@ -42,3 +44,10 @@ def test_script_never_stores_anything_in_the_browser():
     js = (STATIC / "app.js").read_text(encoding="utf-8")
     for banned in ("localStorage", "sessionStorage", "indexedDB", "document.cookie"):
         assert banned not in js, banned
+
+
+def test_layout_toggle_offers_exactly_the_layouts_the_api_accepts():
+    """If the API gains or loses a layout, the page's toggle must change with it."""
+    html = (STATIC / "index.html").read_text(encoding="utf-8")
+    offered = re.findall(r'name="layout" value="(\w+)"', html)
+    assert sorted(offered) == sorted(get_args(LayoutChoice))

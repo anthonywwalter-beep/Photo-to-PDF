@@ -1,4 +1,4 @@
-// Upload, review, and edit page (steps 3-5). Plain JavaScript, no build step.
+// Upload, review, and edit page (steps 3-6). Plain JavaScript, no build step.
 // Privacy: the image is previewed from a local object URL and sent only to /api/extract.
 // Edits and the CSV are built in this browser tab and never sent anywhere; closing the tab discards them.
 // Text that comes back from a document is only ever inserted as plain text or as input values, never as markup.
@@ -10,7 +10,7 @@
     picker: $("picker"), work: $("work"), preview: $("preview"), summary: $("summary"),
     result: $("result"), rawWrap: $("raw-wrap"), raw: $("raw"), another: $("another"),
     tools: $("tools"), addRow: $("add-row"), download: $("download"),
-    nextFlag: $("next-flag"), flagCount: $("flag-count"),
+    nextFlag: $("next-flag"), flagCount: $("flag-count"), layout: $("layout"),
     undo: $("undo"), undoText: $("undo-text"), undoBtn: $("undo-btn"),
   };
   let objectUrl = null;
@@ -20,6 +20,9 @@
   let dirty = false;    // edits not yet downloaded
   let undoInfo = null;  // the last deleted row, so it can be restored
   let flagCursor = null; // the flagged cell the user was last taken to
+  let currentFile = null; // the chosen image, kept in this tab only so it can be read again with another layout
+  let layoutChoice = "auto"; // what the user asked for: auto, table, form, or list
+  let readId = 0;        // identifies the latest read, so an outdated answer is ignored
 
   // ---------- CSV ----------
   // Spreadsheets run cells that start with = + - @ (or tab/CR) as formulas. Document text is untrusted,
@@ -61,14 +64,24 @@
   }
   function clearUndo() { undoInfo = null; el.undo.hidden = true; }
   function updateSummary() {
-    el.summary.textContent = `Layout: ${layout} · ${state.rows.length} row(s) · ${state.columns.length} column(s)`;
+    const label = layoutChoice === "auto" ? "Detected layout" : "Layout (your choice)";
+    el.summary.textContent = `${label}: ${layout} · ${state.rows.length} row(s) · ${state.columns.length} column(s)`;
   }
-  function confirmDiscard() {
-    return !dirty || window.confirm("You have edits that have not been downloaded. Discard them?");
+  function confirmDiscard(message) {
+    return !dirty || window.confirm(message || "You have edits that have not been downloaded. Discard them?");
   }
+  const layoutRadios = () => [...el.layout.querySelectorAll("input")];
+  function selectLayout(value) { layoutRadios().forEach((r) => { r.checked = r.value === value; }); }
+  function setLayoutEnabled(on) { layoutRadios().forEach((r) => { r.disabled = !on; }); }
 
   function reset() {
+    readId++;
     if (controller) controller.abort();
+    currentFile = null;
+    layoutChoice = "auto";
+    selectLayout("auto");
+    setLayoutEnabled(true);
+    el.result.classList.remove("stale");
     if (objectUrl) URL.revokeObjectURL(objectUrl);
     objectUrl = controller = state = null;
     dirty = false;
@@ -222,6 +235,48 @@
     return `Something went wrong (error ${res.status}).`;
   }
 
+  // Read the current image with the given layout. A failed re-read keeps the table already on screen.
+  async function read(choice) {
+    const previous = layoutChoice;
+    const mine = ++readId;
+    setLayoutEnabled(false);
+    el.result.classList.add("stale");
+    setStatus("Reading your image. This can take a little while.", "busy");
+    controller = new AbortController();
+    try {
+      const res = await fetch(`/api/extract?layout=${encodeURIComponent(choice)}`, {
+        method: "POST", body: currentFile, headers: { "Content-Type": currentFile.type }, signal: controller.signal,
+      });
+      if (mine !== readId) return;
+      if (!res.ok) {
+        selectLayout(previous);
+        return setStatus(await errorMessage(res), "error");
+      }
+      const data = await res.json();
+      if (mine !== readId) return;
+      layoutChoice = choice;
+      selectLayout(choice);
+      layout = data.layout;
+      state = { columns: data.columns.slice(), rows: data.rows.map((r) => r.map((c) => ({ v: c.v, low: !!c.low }))) };
+      dirty = false;
+      clearUndo();
+      renderTable();
+      el.tools.hidden = false;
+      el.raw.textContent = JSON.stringify(data, null, 2);
+      el.rawWrap.hidden = false;
+      setStatus("");
+    } catch (err) {
+      if (err.name === "AbortError" || mine !== readId) return;
+      selectLayout(previous);
+      setStatus("Could not reach the server. Check that it is running and try again.", "error");
+    } finally {
+      if (mine === readId) {
+        el.result.classList.remove("stale");
+        setLayoutEnabled(true);
+      }
+    }
+  }
+
   async function handleFile(file) {
     if (!file.type.startsWith("image/")) {
       return setStatus("That is not an image. Use a JPG, PNG, WebP, or GIF.", "error");
@@ -231,30 +286,12 @@
     }
     if (!confirmDiscard()) return;
     reset();
+    currentFile = file;
     objectUrl = URL.createObjectURL(file);
     el.preview.src = objectUrl;
     el.picker.hidden = true;
     el.work.hidden = el.another.hidden = false;
-    setStatus("Reading your image. This can take a little while.", "busy");
-
-    controller = new AbortController();
-    try {
-      const res = await fetch("/api/extract", {
-        method: "POST", body: file, headers: { "Content-Type": file.type }, signal: controller.signal,
-      });
-      if (!res.ok) return setStatus(await errorMessage(res), "error");
-      const data = await res.json();
-      layout = data.layout;
-      state = { columns: data.columns.slice(), rows: data.rows.map((r) => r.map((c) => ({ v: c.v, low: !!c.low }))) };
-      renderTable();
-      el.tools.hidden = false;
-      el.raw.textContent = JSON.stringify(data, null, 2);
-      el.rawWrap.hidden = false;
-      setStatus("");
-    } catch (err) {
-      if (err.name === "AbortError") return;
-      setStatus("Could not reach the server. Check that it is running and try again.", "error");
-    }
+    await read("auto");
   }
 
   function pick(files) {
@@ -279,6 +316,15 @@
   el.another.addEventListener("click", () => { if (confirmDiscard()) reset(); });
   el.addRow.addEventListener("click", addRow);
   el.nextFlag.addEventListener("click", goToNextFlag);
+  el.layout.addEventListener("change", (e) => {
+    const choice = e.target.value;
+    if (!currentFile || choice === layoutChoice) return;
+    if (!confirmDiscard("Reading the image again will replace your edits. Continue?")) {
+      selectLayout(layoutChoice);
+      return;
+    }
+    read(choice);
+  });
   el.download.addEventListener("click", downloadCsv);
   el.undoBtn.addEventListener("click", undoDelete);
   // Nothing is saved anywhere, so warn before a reload or close would throw edits away.
