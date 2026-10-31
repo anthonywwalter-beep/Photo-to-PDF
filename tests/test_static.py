@@ -51,3 +51,8 @@ def test_layout_toggle_offers_exactly_the_layouts_the_api_accepts():
     html = (STATIC / "index.html").read_text(encoding="utf-8")
     offered = re.findall(r'name="layout" value="(\w+)"', html)
     assert sorted(offered) == sorted(get_args(LayoutChoice))
+
+
+def test_file_picker_accepts_several_images():
+    html = (STATIC / "index.html").read_text(encoding="utf-8")
+    assert re.search(r'<input id="file"[^>]*\bmultiple\b', html)

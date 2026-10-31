@@ -8,7 +8,7 @@ Work one step at a time. Each step ends with something runnable and a git commit
 - [x] **4. Editable table + CSV.** Edit cells, rename columns, delete/add rows, download CSV.
 - [x] **5. Uncertain-cell flags.** Highlight low-confidence cells; editing clears the flag.
 - [x] **6. Layout toggle.** Auto-detect table/form/list, with a "treat this as" override that re-runs extraction.
-- [ ] **7. Multiple files.** Several images at once, merged into one table; click a row to see its source image.
+- [x] **7. Multiple files.** Several images at once, merged into one table; click a row to see its source image.
 - [ ] **8. PDF support.** Convert PDF pages to images in memory with `pypdfium2`, then treat them as step 7 does.
 - [ ] **9. Printable view.** Clean print stylesheet.
 - [ ] **10. Hardening.** File size/type limits, Pillow downscaling of large photos, rate limiting, error messages, privacy checks (no logs of content), tests.

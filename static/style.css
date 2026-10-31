@@ -72,3 +72,15 @@ td.flag textarea:focus { background: var(--card); }
 .pill input:disabled + span { opacity: .5; }
 .pill input:disabled { cursor: default; }
 #result.stale { opacity: .5; pointer-events: none; }
+
+.tabs { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 8px; padding-bottom: 2px; }
+.tab { margin: 0; padding: 3px 10px; border-radius: 999px; font-size: .85rem; white-space: nowrap; max-width: 14rem; overflow: hidden; text-overflow: ellipsis; }
+.tab[aria-current="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.issue { background: var(--error-bg); color: var(--error-ink); padding: 8px 10px; border-radius: 8px; margin: 0 0 8px; font-size: .9rem; }
+.issue button { margin: 0 0 0 6px; padding: 2px 10px; }
+td.srcno { width: 2rem; text-align: center; background: var(--bg); }
+td.srcno button { margin: 0; padding: 2px 8px; border: 0; background: transparent; color: var(--muted); font-size: .85rem; }
+td.srcno button:hover { color: var(--accent); }
+th.srcno { font-size: .75rem; color: var(--muted); text-align: center; padding: 6px 4px; }
+.srcopt { display: block; font-size: .9rem; margin: 6px 0; }
+#add-more { margin-top: 10px; }

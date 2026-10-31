@@ -2,6 +2,43 @@
 
 Each entry lists every file touched and what the file is for. Newest first.
 
+## 0.7.0 - Step 7: Multiple files
+
+Several images can be uploaded at once and are merged into one table. Click a row to see the image it came from. No server change: each image is still one `/api/extract` request.
+
+### Added
+| File | Purpose |
+|---|---|
+| `scripts/smoke_live.py` | Live smoke test: reads real image files through the real API and prints layout, counts, flagged cells, timing, and the first rows. Needs a key; costs a few cents. Takes a fake reader in tests. |
+| `tests/test_smoke_script.py` | Tests the smoke script with a fake reader: output, exit codes, unreadable and non-image files, missing key. |
+| `docs/LIVE_TESTING.md` | How and when to test with a real key: safety steps, what to run, what to look for, what to write down. |
+
+### Changed
+| File | Change |
+|---|---|
+| `static/app.js` | Rewritten around a list of images and one merged table. Up to 20 images per batch, read 3 at a time, results added as they arrive but always kept in image order. Per-image failures with a "Try again" button. Image tabs, a source-image number on each row, a "Source image" CSV option, "Add more images", and "Start over". |
+| `static/index.html` | Multi-file picker, image tabs, "Add more images", per-image problem list, the CSV source option. |
+| `static/style.css` | Tabs, problem boxes, the source-number column. |
+| `tests/test_static.py` | New test: the file picker must accept several files. |
+| `README.md`, `TODO.md`, `CHANGELOG.md` | Status, step 7 checked off, this entry. |
+
+### Design decisions
+- **Column matching.** Columns from different images are matched by name, ignoring case and spacing, in any order. Unmatched names become new columns, and rows from images without that column get blanks (not flagged). The match key is fixed when the column is created, so renaming a header later does not stop later images from landing in it. Two columns with the same name on one page stay separate.
+- **Image order always wins.** Rows are placed by image number, not arrival time, so a slow first image still appears first. A retried image slides back into its place.
+- **One bad image does not block the rest.** Failed images are listed with the reason and a "Try again" button; the others show normally.
+- **Typing is not interrupted.** Answers can arrive while someone is editing; the table is redrawn but the cursor, selection, and focus are put back.
+- **Changing layout re-reads every image**, and the page says how many ("Reading all 3 images again..."). Nothing on screen changes until the answers are in; if every re-read fails the old table and edits are kept; if only some fail the rest replace the table and the failed ones are listed.
+- **Bounded cost and memory.** At most 20 images per batch, 3 requests at a time, and the layout toggle and "Add more images" are locked while reading. Invalid or oversize files are skipped with a note naming each one.
+- **File names are untrusted text.** They appear only as text, and in the CSV source column they get the same spreadsheet-formula protection as every other cell.
+- **The source column is opt-in.** File names can contain personal details, so the CSV only includes them if the box is ticked.
+- **PDFs are still rejected**, with the same message as any non-image; step 8 adds them.
+
+### How it was verified
+41 automated tests pass (also with Python's default text encoding forced to ASCII). The page was run in a simulated browser (jsdom), partly against the real demo server and partly with scripted slow, failing, and out-of-order answers: 77 checks covering merging, ordering, the 3-at-a-time limit, column matching, failures and retries, layout changes (cancel, confirm, partial and total failure), adding images, not disturbing typing, skipped files and the 20-image cap, "Start over" with a late answer, hostile file names, and the step 4 to 6 features on merged rows. Five deliberate bugs (case-sensitive matching, rows appended instead of ordered, cursor not restored, late answers not ignored, no concurrency limit) were each caught, then the code was restored. A simulated browser cannot judge appearance, so please check the layout, especially the tabs and the Img column, in a real browser and on a narrow screen.
+
+### Known limits
+Column matching is by name only. If the real reader labels the same field differently on different pages, the page will show two columns and the user must fix it by hand (there is no "merge columns" button yet). Whether that happens with real documents can only be learned with a real key; see `docs/LIVE_TESTING.md`. No PDFs yet (step 8). Browser memory holds all images at once, so 20 images of 5 MB is about 100 MB.
+
 ## 0.6.0 - Step 6: Layout toggle
 
 A "Treat this as: Auto / Table / Form / List" control lets the user correct the tool when it guesses the layout wrong. No server change: `/api/extract` has accepted `?layout=` since step 2.
