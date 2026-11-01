@@ -21,8 +21,15 @@ def test_page_and_assets_are_served():
         assert client.get(asset).status_code == 200
 
 
-def test_page_states_the_privacy_promise():
-    assert "Nothing is stored" in client.get("/").text
+def test_page_states_what_this_app_stores():
+    assert "This app stores nothing" in client.get("/").text
+
+
+def test_page_warns_against_sensitive_uploads_before_the_upload_area():
+    """Interim safeguard until private processing exists (see TODO.md, Phase 2)."""
+    text = client.get("/").text
+    assert "do not upload sensitive or personal information" in text
+    assert text.index("do not upload sensitive") < text.index('id="drop"')
 
 
 def test_page_has_every_element_the_script_uses():

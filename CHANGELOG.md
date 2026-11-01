@@ -2,6 +2,31 @@
 
 Each entry lists every file touched and what the file is for. Newest first.
 
+## 0.7.1 - Sensitive-data warning and Phase 2 plan
+
+An interim safeguard, plus the plan for private processing. No change to how the app reads or stores anything.
+
+### Added
+| File | Purpose |
+|---|---|
+| `docs/PRIVATE_PROCESSING.md` | Why Phase 2 exists: what is and is not protected today, what Anthropic's documentation says about retention (checked 31 October 2026, with the source link), the four options, local reading approaches and their unknowns, closed deployment design, design rules, limits, and open questions (hardware first). |
+
+### Changed
+| File | Change |
+|---|---|
+| `static/index.html` | A prominent warning above the upload area: do not upload sensitive or personal information yet, because the image goes to the Anthropic API and may be retained under its policies. The privacy line now reads "This app stores nothing" and points to the warning, because "Nothing is stored" on its own overstated what the app can promise. |
+| `static/style.css` | Styling for the warning box. |
+| `tests/test_static.py` | The privacy test now checks the new wording, and a new test requires the warning to be on the page and to appear before the upload area. |
+| `TODO.md` | New "Phase 2: Private processing" with steps 12-18, to be done after step 11. |
+| `README.md` | New "Important: do not upload sensitive information yet" section; principle 2 reworded; project layout lists the new document. |
+| `docs/LIVE_TESTING.md` | Now says to use made-up documents only. |
+| `CHANGELOG.md` | This entry. |
+
+### Notes
+- The warning is shown in every mode. Demo mode sends nothing anywhere, and the text says so.
+- The warning is meant to be removed only by Phase 2 step 18, after the privacy steps are verified for the deployment in use.
+- 42 automated tests pass (also with Python's default text encoding forced to ASCII). Not viewed in a real browser; please check the warning's look in light and dark mode.
+
 ## 0.7.0 - Step 7: Multiple files
 
 Several images can be uploaded at once and are merged into one table. Click a row to see the image it came from. No server change: each image is still one `/api/extract` request.

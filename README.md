@@ -6,6 +6,10 @@ Upload a photo or PDF of a table, form, or notes. Get an editable table next to 
 
 Early development. Steps 1-5 are done: the server, the extraction API, the upload page, an editable table with CSV download, highlighting of uncertain cells, a layout toggle, and several images merged into one table. PDFs and a printable view come next. See [TODO.md](TODO.md) for the plan and [CHANGELOG.md](CHANGELOG.md) for what changed and why.
 
+## Important: do not upload sensitive information yet
+
+In live mode each image is sent to the Anthropic API to be read. This app stores nothing, but the AI service may keep what it receives for a time under its own data policies, and this app cannot control that. **Until private processing is added (see Phase 2 in [TODO.md](TODO.md)), only use made-up or non-sensitive documents**, unless you have accepted that the data may be stored by that service. Demo mode sends nothing anywhere. Background and options: [docs/PRIVATE_PROCESSING.md](docs/PRIVATE_PROCESSING.md).
+
 ## How it will work
 
 | Input | Output |
@@ -19,7 +23,7 @@ Layout is picked automatically, with a "treat this as" toggle to correct it.
 ## Design principles
 
 1. **Review first.** The original is shown beside the result, and cells the AI was unsure about are flagged. Handwriting is where mistakes happen.
-2. **Nothing stored.** Files are processed in memory and discarded. No database, no accounts, no uploads written to disk, and request contents are not logged. Each page image is sent to the Anthropic API to be read, so deploy accordingly if your documents are sensitive.
+2. **This app stores nothing.** Files are processed in memory and discarded. No database, no accounts, no uploads written to disk, and request contents are not logged. Each page image is sent to the Anthropic API to be read, where it may be retained under that service's policies (see the warning above), so deploy accordingly if your documents are sensitive.
 3. **Photo in, clean table out.** No complex layouts, charts, or accounts in v1.
 
 ## Run it
@@ -108,6 +112,7 @@ The request body is the raw image (JPG, PNG, WebP, or GIF, up to 5 MB). The imag
 | `static/` | The web page |
 | `scripts/smoke_live.py` | Reads real images through the real API and prints the result (needs a key) |
 | `docs/LIVE_TESTING.md` | How and when to test with a real key |
+| `docs/PRIVATE_PROCESSING.md` | Plan and reasoning for private (local) processing |
 | `docs/TECH_STACK.md` | Tech stack, what is deliberately left out, Docker plan |
 | `CHANGELOG.md` | Every change, with each file's purpose |
 | `tests/` | Automated tests; none need a key or network |

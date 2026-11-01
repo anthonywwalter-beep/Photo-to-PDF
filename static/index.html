@@ -13,9 +13,17 @@
 
   <p id="mode-banner" class="banner" hidden></p>
 
-  <p class="privacy"><strong>Nothing is stored.</strong> Your image is handled in memory and discarded as soon
-    as it has been read. There are no accounts and no database. In live mode the image is sent to the
-    Anthropic API to be read.</p>
+  <div class="warning" role="note">
+    <strong>Important: do not upload sensitive or personal information yet.</strong>
+    In live mode your image is sent to the Anthropic API to be read, and that service may keep it for a time
+    under its own data policies. This app cannot control that. Until private processing options are added, only
+    upload documents you are happy to have stored by that service, such as made-up samples or non-sensitive
+    material, unless you have accepted that it may be stored. Demo mode sends nothing anywhere.
+  </div>
+
+  <p class="privacy"><strong>This app stores nothing.</strong> Your image is handled in memory by this server and
+    discarded as soon as it has been read. There are no accounts and no database. Where the image goes after that
+    is described in the warning above.</p>
 
   <section id="picker">
     <div id="drop" class="drop" role="button" tabindex="0" aria-label="Choose an image to upload">

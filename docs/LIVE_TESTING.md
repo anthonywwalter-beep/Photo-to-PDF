@@ -4,7 +4,8 @@ Everything so far is tested with fakes and demo data. The one thing no test here
 
 ## Before you start
 
-- **Use sample documents first.** The image goes to the Anthropic API, and the smoke script prints what it read to your terminal. Make or find a few harmless samples (a printed table, a handwritten sign-in sheet you write yourself, a blank-ish intake form you fill with made-up details).
+- **Use made-up documents only, and nothing sensitive.** Until Phase 2 in `TODO.md` is done, do not upload real personal information: see the warning in the README and `docs/PRIVATE_PROCESSING.md`.
+- **About sample documents:** The image goes to the Anthropic API, and the smoke script prints what it read to your terminal. Make or find a few harmless samples (a printed table, a handwritten sign-in sheet you write yourself, a blank-ish intake form you fill with made-up details).
 - **Put a spend limit on the key.** Create a key just for this project and set a monthly limit in the Anthropic console. A smoke test costs a few cents; a bug that loops could cost more.
 - **Keep the key out of git.** Copy `.env.example` to `.env` and add `ANTHROPIC_API_KEY=...`. `.env` is already in `.gitignore`. Never paste the key into a chat or an issue.
 

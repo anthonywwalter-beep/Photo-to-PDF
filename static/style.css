@@ -84,3 +84,6 @@ td.srcno button:hover { color: var(--accent); }
 th.srcno { font-size: .75rem; color: var(--muted); text-align: center; padding: 6px 4px; }
 .srcopt { display: block; font-size: .9rem; margin: 6px 0; }
 #add-more { margin-top: 10px; }
+
+.warning { background: var(--flag-bg); border: 1px solid var(--flag-line); border-left-width: 6px; border-radius: 8px;
+  padding: 10px 12px; margin: 0 0 14px; font-size: .95rem; }
