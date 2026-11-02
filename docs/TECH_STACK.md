@@ -2,7 +2,7 @@
 
 Guiding rule: the fewest moving parts that keep the promises of the project (review step, nothing stored, photo in / table out). Anything that needs a database, accounts, or a build pipeline is left out on purpose.
 
-## In use now (steps 1-2)
+## In use now (steps 1-8)
 
 | Layer | Choice | Why |
 |---|---|---|
@@ -10,6 +10,8 @@ Guiding rule: the fewest moving parts that keep the promises of the project (rev
 | Web framework | FastAPI (on Starlette) | Small, fast, typed request/response models, easy to test. |
 | Server | Uvicorn | Standard server for FastAPI. One process is enough for v1. |
 | Reader (the AI) | Anthropic API via the official `anthropic` Python SDK, default model `claude-sonnet-5-5` | Reads photos and handwriting and returns structured JSON. Model is switchable with `EXTRACT_MODEL`. |
+| PDF to images | `pypdfium2` (Google's PDFium library) | Prebuilt wheels on Windows, macOS, and Linux with no system packages, permissive license, renders from memory. Alternatives rejected: `pdf2image` (needs the Poppler program, awkward on Windows) and PyMuPDF (AGPL license). |
+| Image encoding | Pillow | Encodes the rendered pages as JPEG under the size limit. Also planned for downscaling photos and stripping metadata. |
 | Data shapes | Pydantic (ships with FastAPI) | Validates what the reader returns before the app trusts it. |
 | Config | Environment variables | No config files with secrets; works the same locally and in Docker. |
 | Tests | pytest + `httpx2` test client | All tests use fakes: no key, no network, no cost. |
@@ -23,7 +25,6 @@ Last tested with: Python 3.12.3, FastAPI 0.143.3, Starlette 1.8.0, anthropic SDK
 |---|---|---|---|
 | 3-7, 9 | Front end | Plain HTML, CSS, and JavaScript served from `static/` | No Node, no bundler, no build step. The page is small: upload, image beside an editable table, CSV button. |
 | 4 | CSV export | Built in the browser (or Python `csv` module) | Needs no library. Data never has to be sent back to the server. |
-| 8 | PDF to images | `pypdfium2` | Prebuilt wheels on Windows, macOS, and Linux with no system packages needed, and a permissive license. Alternatives considered: `pdf2image` (needs the Poppler program installed, awkward on Windows) and PyMuPDF (AGPL license, which would force open-sourcing any hosted service). |
 | 10 | Image resizing | Pillow | Shrinks large phone photos before sending, which cuts cost and avoids the 5 MB limit. |
 | 10 | Rate limiting | `slowapi` or a small in-memory limiter | Stops a public deployment being used to burn the API budget. In memory only, so it respects "nothing stored". |
 | 11 | Packaging | Docker | See below. |

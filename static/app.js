@@ -1,10 +1,11 @@
-// Upload, review, and edit page (steps 3-7). Plain JavaScript, no build step.
+// Upload, review, and edit page (steps 3-8). Plain JavaScript, no build step.
 // Privacy: images are previewed from local object URLs and sent only to /api/extract, one request per image.
 // Edits and the CSV are built in this browser tab and never sent anywhere; closing the tab discards them.
 // Text that comes back from a document (and file names) is only ever inserted as plain text or as input
 // values, never as markup.
 (() => {
   const MAX_MB = 5;        // matches the server default; the server's answer is the final word
+  const MAX_PDF_MB = 20;   // likewise for PDFs
   const MAX_FILES = 20;    // bounds cost and memory for one batch
   const CONCURRENCY = 3;   // images read at the same time
   const $ = (id) => document.getElementById(id);
@@ -495,15 +496,69 @@
     setStatus("");
   }
 
-  function addFiles(list) {
+  const isPdf = (f) => f.type === "application/pdf" || (!f.type && /\.pdf$/i.test(f.name));
+  const problem = (f) => isPdf(f)
+    ? (f.size > MAX_PDF_MB * 1024 * 1024 ? `over ${MAX_PDF_MB} MB` : null)
+    : !f.type.startsWith("image/") ? "not an image or PDF"
+    : f.size > MAX_MB * 1024 * 1024 ? `over ${MAX_MB} MB` : null;
+  const bytesFromBase64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+
+  // Turn each PDF into page images. The server draws the pages in memory and sends them back; from then on
+  // each page is an ordinary image. The order the user chose is kept. Returns the new list, or null if the
+  // user started over while the PDFs were opening.
+  async function expandPdfs(list, skipped, notes) {
+    const session = readId;
+    const items = [];
+    let room = MAX_FILES - files.length - list.filter((f) => !isPdf(f) && !problem(f)).length;
+    reading++; // locks the controls while PDFs open
+    updateBusy();
+    try {
+      for (const f of list) {
+        if (!isPdf(f)) { items.push(f); continue; }
+        const why = problem(f);
+        if (why) { skipped.push(`${f.name} (${why})`); continue; }
+        if (room <= 0) { skipped.push(`${f.name} (limit of ${MAX_FILES} images)`); continue; }
+        setStatus(`Opening ${f.name}…`, "busy");
+        let res;
+        try {
+          res = await fetch(`/api/pdf/pages?max=${room}`, {
+            method: "POST", body: f, headers: { "Content-Type": "application/pdf" }, signal: controller.signal,
+          });
+          if (session !== readId) return null;
+          if (!res.ok) { skipped.push(`${f.name} (${await errorMessage(res)})`); continue; }
+          const data = await res.json();
+          if (session !== readId) return null;
+          data.pages.forEach((p, k) => items.push(
+            new File([bytesFromBase64(p.data)], `${f.name} – page ${k + 1}`, { type: p.media_type })));
+          room -= data.pages.length;
+          if (data.page_count > data.pages.length) {
+            notes.push(`${f.name}: only the first ${data.pages.length} of ${data.page_count} pages were added.`);
+          }
+        } catch (err) {
+          if (err.name === "AbortError" || session !== readId) return null;
+          skipped.push(`${f.name} (could not reach the server)`);
+        }
+      }
+    } finally {
+      if (session === readId) { reading--; updateBusy(); }
+    }
+    return items;
+  }
+
+  async function addFiles(list) {
     if (reading > 0) return setStatus("Please wait until the current reading has finished.", "error");
-    const problem = (f) => !f.type.startsWith("image/") ? "not an image" : f.size > MAX_MB * 1024 * 1024 ? `over ${MAX_MB} MB` : null;
-    if (list.length === 1 && problem(list[0])) {
-      return setStatus(problem(list[0]) === "not an image"
-        ? "That is not an image. Use a JPG, PNG, WebP, or GIF."
+    if (list.length === 1 && !isPdf(list[0]) && problem(list[0])) {
+      return setStatus(problem(list[0]) === "not an image or PDF"
+        ? "That is not an image or PDF. Use a JPG, PNG, WebP, GIF, or PDF."
         : `That file is larger than ${MAX_MB} MB. Try a smaller photo.`, "error");
     }
-    const valid = [], skipped = [];
+    if (!controller) controller = new AbortController();
+    const skipped = [], notes = [];
+    if (list.some(isPdf)) {
+      list = await expandPdfs(list, skipped, notes);
+      if (list === null) return;
+    }
+    const valid = [];
     for (const f of list) {
       const p = problem(f);
       if (p) skipped.push(`${f.name} (${p})`); else valid.push(f);
@@ -511,10 +566,10 @@
     const room = MAX_FILES - files.length;
     valid.slice(Math.max(room, 0)).forEach((f) => skipped.push(`${f.name} (limit of ${MAX_FILES} images)`));
     valid.length = Math.min(valid.length, Math.max(room, 0));
-    if (!valid.length) return setStatus(skipped.length ? `Skipped: ${skipped.join(", ")}.` : "No images were chosen.", "error");
-    skippedNote = skipped.length ? `Skipped: ${skipped.join(", ")}.` : "";
+    const note = [skipped.length ? `Skipped: ${skipped.join(", ")}.` : "", ...notes].filter(Boolean).join(" ");
+    if (!valid.length) return setStatus(note || "No images were chosen.", "error");
+    skippedNote = note;
     const first = files.length;
-    if (!controller) controller = new AbortController();
     valid.forEach((f) => files.push({ file: f, name: f.name || "image", url: URL.createObjectURL(f), status: "queued", error: null, layout: null }));
     el.picker.hidden = true;
     el.work.hidden = el.another.hidden = false;

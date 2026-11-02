@@ -2,6 +2,72 @@
 
 Each entry lists every file touched and what the file is for. Newest first.
 
+## 0.8.1 - Sample documents
+
+Made-up test documents with answer keys, for testing with a real key and later for comparing readers (Phase 2).
+
+### Added
+| File | Purpose |
+|---|---|
+| `samples/make_samples.py` | Generates every sample and its answer key from one set of invented data, so pictures and keys cannot drift apart. `--big` also makes a 4.3 MB photo and a 5.8 MB photo (over the limit). Needs Pillow. |
+| `samples/01_signin_printed.png` ... `samples/10_signin_2pages_scan.pdf` | Eight images and two PDFs: a clean printed table, a messy tilted photo with two deliberately hard cells, three copies of one form (one photographed) for the merging test, a photographed invoice, free-text notes, a blank page, a 3-page PDF, and a 2-page scanned PDF. |
+| `samples/expected_*.csv` | The answer key for each table-like sample. |
+| `samples/README.md` | What each sample tests, what a good result looks like, the hard cells, and how to score a run (cells correct, wrong and flagged, wrong and not flagged). |
+| `tests/test_samples.py` | Keeps the samples usable: real images under the size limit, rectangular answer keys, PDFs that convert to the documented page counts, merge keys that match their documents, and the big photos straddling the limit when generated. |
+
+### Changed
+| File | Change |
+|---|---|
+| `.gitignore` | Ignores `samples/big/`. |
+
+### Notes
+- The handwriting is simulated, so a good result is a minimum, not a guarantee.
+- Every sample was looked at after generation. That caught one bug: the invoice's totals were drawn on a black background and were unreadable. Fixed before release.
+- Through the server in demo mode every image is accepted, the 5.8 MB photo is refused with the 5 MB message, and the two PDFs convert to 3 and 2 pages. Reading quality itself is untested: it needs a real key.
+
+## 0.8.0 - Step 8: PDF support
+
+PDFs can be uploaded like images. The server draws each page as an image in memory, and from then on every page is an ordinary image in the step 7 flow: its own tab, retry, source column, and layout re-read.
+
+### Added
+| File | Purpose |
+|---|---|
+| `app/pdf.py` | Opens a PDF from memory with `pypdfium2` and draws up to N pages as JPEGs (long side at most 2000 px, each under the image size limit, lowering quality and then size if needed). Clear errors for password-protected, damaged, and empty PDFs. A lock serializes use of PDFium. |
+| `tests/test_pdf.py` | 10 tests: pages come back as valid JPEGs with no key, the `max` and server page limits, bounded page sizes (huge and tiny pages), the image size limit, every error, the size cap without a Content-Length header, the pointer from `/api/extract`, junk before the PDF header, six simultaneous requests, and the settings. |
+
+### Changed
+| File | Change |
+|---|---|
+| `app/main.py` | New `POST /api/pdf/pages`. The body-reading code is shared with `/api/extract` (still streamed into memory, size capped as it arrives). `/api/extract` now tells a sender of a PDF where to go instead of a generic type error. |
+| `app/config.py` | `MAX_PDF_MB` (default 20) and `MAX_PDF_PAGES` (default 20). |
+| `app/schemas.py` | Response shapes for the PDF pages. |
+| `requirements.txt` | Added `pypdfium2` and `pillow`. **Run `pip install -r requirements-dev.txt` again.** |
+| `.env.example` | Documents the two new settings. |
+| `static/app.js` | PDFs are accepted, opened one at a time (controls locked meanwhile), and replaced by their page images in the order chosen. Pages are named "file.pdf - page 2". Asks the server only for the room left in the 20-image batch and says when pages were left out. PDFs over 20 MB are skipped without a request. |
+| `static/index.html` | The picker accepts PDFs; hint and warning text mention them. |
+| `tests/test_static.py` | New test: the picker accepts PDFs. |
+| `tests/test_privacy.py` | New test: a PDF over 1 MB writes nothing to disk and nothing to the logs, and its title and author do not appear in the page images. |
+| `tests/conftest.py` | A tiny real password-protected PDF, so the password message is tested for real. |
+| `tests/test_smoke_script.py`, `scripts/smoke_live.py` | The smoke script converts PDFs to pages and reads each. |
+| `docs/TECH_STACK.md`, `docs/LIVE_TESTING.md`, `TODO.md` | PDF stack, test advice, step 8 checked off. |
+| `README.md` | PDF API and settings, sample documents section, and the status line corrected (it still said steps 1-5 were done). |
+
+### Design decisions
+- **Server draws, browser keeps the images.** PDFs are converted once, the pages travel back to the browser, and each page is then sent to `/api/extract` like any photo. The server stays stateless and the whole step 7 flow works unchanged. The cost is that each page crosses the network twice, which is fine locally.
+- **Pages are only drawn, never searched for text.** The reader sees exactly what the person sees, and the new images carry none of the PDF's title, author, scripts, or attachments (tested).
+- **Bounded in every direction.** At most 20 MB in, 20 pages out, 2000 px on the long side, each image under 5 MB. Odd PDFs (an enormous page, a tiny receipt, a 500-page file) cannot use unbounded memory or time.
+- **Clear failures.** Password-protected and damaged PDFs get their own messages, and a bad PDF in a batch is skipped with a note while the other files go ahead.
+- **Needs no API key,** so the PDF flow can be tried in demo mode (real page conversion, sample table data).
+
+### How it was verified
+72 automated tests pass (also with Python's default text encoding forced to ASCII). The page was run in a simulated browser (jsdom) against real servers (normal, 2-page limit, 1 MB PDF limit) with real PDFs: 28 new checks covering one PDF to tabs and merged rows, mixed images and PDFs in order, both page limits, damaged, password-protected, and oversize PDFs, busy state, a late answer after "Start over", file types, a retried page, and a hostile file name. The 77 checks from step 7 were rerun and pass (three expectations updated, because a PDF is no longer rejected). Six deliberate bugs were each caught: asking for 20 pages regardless of room, not ignoring late answers, never restoring the busy state, pages in the wrong place, the page-size cap removed, and password PDFs reported as damaged.
+
+### Known limits and cautions
+- **PDFium parses untrusted files.** It is a large native library; a malformed PDF could in principle exploit a bug in it. Keep `pypdfium2` up to date, and run the server in the container planned for step 11 (read-only, non-root).
+- **The lock may be unnecessary.** PDFium is generally documented as not thread-safe, but a stress test here (8 threads, with and without the lock) did not reproduce a crash. The lock stays because it costs almost nothing.
+- **Text PDFs are read as pictures.** A PDF with a real text layer could be read exactly, without the AI at all, which would be cheaper and more private. Not built; worth considering.
+- **Not tested with a real key**, and not viewed in a real browser. Large scanned PDFs (20 pages) have not been timed.
+
 ## 0.7.1 - Sensitive-data warning and Phase 2 plan
 
 An interim safeguard, plus the plan for private processing. No change to how the app reads or stores anything.

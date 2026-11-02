@@ -5,7 +5,7 @@ Everything so far is tested with fakes and demo data. The one thing no test here
 ## Before you start
 
 - **Use made-up documents only, and nothing sensitive.** Until Phase 2 in `TODO.md` is done, do not upload real personal information: see the warning in the README and `docs/PRIVATE_PROCESSING.md`.
-- **About sample documents:** The image goes to the Anthropic API, and the smoke script prints what it read to your terminal. Make or find a few harmless samples (a printed table, a handwritten sign-in sheet you write yourself, a blank-ish intake form you fill with made-up details).
+- **Sample documents with answer keys are in `samples/`.** See `samples/README.md`. About sample documents in general: The image goes to the Anthropic API, and the smoke script prints what it read to your terminal. Make or find a few harmless samples (a printed table, a handwritten sign-in sheet you write yourself, a blank-ish intake form you fill with made-up details).
 - **Put a spend limit on the key.** Create a key just for this project and set a monthly limit in the Anthropic console. A smoke test costs a few cents; a bug that loops could cost more.
 - **Keep the key out of git.** Copy `.env.example` to `.env` and add `ANTHROPIC_API_KEY=...`. `.env` is already in `.gitignore`. Never paste the key into a chat or an issue.
 
@@ -28,6 +28,7 @@ For each image it prints the layout it chose, row and column counts, how many ce
 
 Start the server without demo mode: `uvicorn app.main:app --reload --env-file .env`. Open http://localhost:8000. The banner about demo mode should be gone.
 
+0. Drop in a PDF from `samples/` (for example `10_signin_2pages_scan.pdf`) and check the pages become tabs in order.
 1. Upload one clear printed table. Does the table match?
 2. Upload one handwritten page. Are the amber cells the doubtful ones?
 3. Upload **two or three pages of the same kind** (several copies of the same form, or pages of one long table). This is the test that matters most for merging: do the columns line up, or does the same field come back with slightly different names ("Full name" vs "Name") and split into two columns?

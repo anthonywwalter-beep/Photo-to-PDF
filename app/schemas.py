@@ -18,3 +18,15 @@ class Extraction(BaseModel):
     layout: Layout
     columns: list[str]
     rows: list[list[Cell]]  # every row has exactly len(columns) cells
+
+
+class PdfPage(BaseModel):
+    media_type: str       # always image/jpeg
+    width: int
+    height: int
+    data: str             # the page image, base64
+
+
+class PdfPages(BaseModel):
+    page_count: int       # pages in the PDF
+    pages: list[PdfPage]  # the pages rendered (at most the page limit)

@@ -3,11 +3,14 @@
 Needs ANTHROPIC_API_KEY (in the environment or in a .env file). It costs a small amount per image.
 The extracted text is printed to YOUR terminal, so use sample documents, not real people's data, for first runs.
 
-    python scripts/smoke_live.py photo.jpg [more.png ...] [--layout auto|table|form|list]
+    python scripts/smoke_live.py photo.jpg [scan.pdf ...] [--layout auto|table|form|list]
+
+PDFs are turned into page images first (the same way the web page does), and each page is read separately.
 """
 from __future__ import annotations
 
 import argparse
+import base64
 import os
 import sys
 import time
@@ -17,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.config import load_settings  # noqa: E402
 from app.extraction import AnthropicExtractor, ExtractionError, sniff_media_type  # noqa: E402
+from app.pdf import PdfError, looks_like_pdf, render_pages  # noqa: E402
 
 
 def load_dotenv(path: Path = Path(".env")) -> None:
@@ -65,19 +69,35 @@ def main(argv=None, extractor=None) -> int:
             print(f"  cannot read file: {e.strerror}")
             failures += 1
             continue
-        media_type = sniff_media_type(data)
-        if media_type is None:
-            print("  not a JPG, PNG, WebP, or GIF image")
-            failures += 1
-            continue
-        start = time.perf_counter()
-        try:
-            result = extractor.extract(data, media_type, args.layout)
-        except ExtractionError as e:
-            print(f"  FAILED: {e}")
-            failures += 1
-            continue
-        show(result, time.perf_counter() - start)
+        if looks_like_pdf(data):
+            try:
+                rendered = render_pages(data, 20, 5 * 1024 * 1024)
+            except PdfError as e:
+                print(f"  FAILED: {e}")
+                failures += 1
+                continue
+            print(f"  PDF with {rendered.page_count} page(s); reading {len(rendered.pages)}")
+            parts = [(f"page {k}", base64.b64decode(p.data), p.media_type) for k, p in enumerate(rendered.pages, 1)]
+        else:
+            media_type = sniff_media_type(data)
+            if media_type is None:
+                print("  not a JPG, PNG, WebP, GIF, or PDF file")
+                failures += 1
+                continue
+            parts = [("", data, media_type)]
+        broken = False
+        for label, image, media_type in parts:
+            if label:
+                print(f"  {label}:")
+            start = time.perf_counter()
+            try:
+                result = extractor.extract(image, media_type, args.layout)
+            except ExtractionError as e:
+                print(f"  FAILED: {e}")
+                broken = True
+                continue
+            show(result, time.perf_counter() - start)
+        failures += broken
     print(f"\n{len(args.images) - failures} of {len(args.images)} images read.")
     return 1 if failures else 0
 

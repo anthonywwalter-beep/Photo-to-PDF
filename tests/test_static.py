@@ -63,3 +63,8 @@ def test_layout_toggle_offers_exactly_the_layouts_the_api_accepts():
 def test_file_picker_accepts_several_images():
     html = (STATIC / "index.html").read_text(encoding="utf-8")
     assert re.search(r'<input id="file"[^>]*\bmultiple\b', html)
+
+
+def test_file_picker_accepts_pdfs():
+    html = (STATIC / "index.html").read_text(encoding="utf-8")
+    assert re.search(r'<input id="file"[^>]*accept="[^"]*application/pdf', html)

@@ -12,6 +12,8 @@ class Settings:
     demo_mode: bool = False
     model: str = "claude-sonnet-5-5"
     max_upload_bytes: int = 5 * 1024 * 1024  # 5 MB, the API's per-image limit
+    max_pdf_bytes: int = 20 * 1024 * 1024    # a scanned PDF is often bigger than one photo
+    max_pdf_pages: int = 20                  # pages turned into images per PDF
 
 
 def load_settings(env: Mapping[str, str] | None = None) -> Settings:
@@ -21,4 +23,6 @@ def load_settings(env: Mapping[str, str] | None = None) -> Settings:
         demo_mode=env.get("DEMO_MODE", "").strip().lower() in {"1", "true", "yes"},
         model=env.get("EXTRACT_MODEL") or Settings.model,
         max_upload_bytes=int(float(env.get("MAX_UPLOAD_MB", "5")) * 1024 * 1024),
+        max_pdf_bytes=int(float(env.get("MAX_PDF_MB", "20")) * 1024 * 1024),
+        max_pdf_pages=int(env.get("MAX_PDF_PAGES", "20")),
     )

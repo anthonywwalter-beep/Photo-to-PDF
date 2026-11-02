@@ -38,7 +38,7 @@ def test_failures_set_exit_code_and_continue(png, tmp_path, capsys):
     bad.write_bytes(b"not an image")
     assert smoke.main([str(bad), str(missing), str(good)], extractor=Fake()) == 1
     out = capsys.readouterr().out
-    assert "not a JPG" in out and "cannot read file" in out and "1 of 3 images read" in out
+    assert "not a JPG, PNG, WebP, GIF, or PDF" in out and "cannot read file" in out and "1 of 3 images read" in out
 
 
 def test_reader_error_is_reported(png, tmp_path, capsys):
@@ -55,3 +55,20 @@ def test_missing_key_gives_clear_message(png, tmp_path, monkeypatch, capsys):
     img.write_bytes(png)
     assert smoke.main([str(img)]) == 2
     assert "ANTHROPIC_API_KEY" in capsys.readouterr().err
+
+
+def test_pdf_is_converted_to_pages_and_each_page_is_read(tmp_path, capsys):
+    import io
+
+    from PIL import Image
+
+    pages = [Image.new("RGB", (400, 500), c) for c in ("white", "#eef")]
+    buf = io.BytesIO()
+    pages[0].save(buf, "PDF", save_all=True, append_images=pages[1:])
+    pdf = tmp_path / "scan.pdf"
+    pdf.write_bytes(buf.getvalue())
+    fake = Fake()
+    assert smoke.main([str(pdf)], extractor=fake) == 0
+    out = capsys.readouterr().out
+    assert "PDF with 2 page(s)" in out and "page 1:" in out and "page 2:" in out
+    assert fake.seen == [("image/jpeg", "auto"), ("image/jpeg", "auto")]
